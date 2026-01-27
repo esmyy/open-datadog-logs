@@ -1,0 +1,29 @@
+{
+  "name": "@esmyy/open-datadog-logs",
+  "version": "1.0.0",
+  "description": "Open Datadog Logs in the browser when a request ID is copied to the clipboard",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "datadog",
+    "logs",
+    "clipboard",
+    "browser",
+    "open",
+    "request id"
+  ],
+  "author": "esmyy",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/esmyy/open-datadog-logs.git"
+  },
+  "license": "MIT",
+  "devDependencies": {},
+  "packageManager": "pnpm@10.28.0",
+  "dependencies": {
+    "clipboardy": "^5.1.0",
+    "open": "^11.0.0"
+  }
+}
