@@ -14,6 +14,9 @@ const os = require('os');
 const requestIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 let previousClipboard = '';
 
+const PLIST_NAME = 'com.esmyy.open-datadog-logs.plist';
+const PLIST_PATH = path.join(os.homedir(), 'Library', 'LaunchAgents', PLIST_NAME);
+
 const readClipboard = () => {
   // Prefer clipboardy, but keep a macOS fallback for launchd environments.
   try {
@@ -69,9 +72,7 @@ const addToStartup = () => {
   const scriptPath = __filename;
     
     // 创建 launchd plist 文件
-    const plistName = 'com.esmyy.open-datadog-logs.plist';
-    const plistPath = path.join(os.homedir(), 'Library', 'LaunchAgents', plistName);
-    const launchAgentsDir = path.dirname(plistPath);
+    const launchAgentsDir = path.dirname(PLIST_PATH);
 
     // 确保 LaunchAgents 目录存在
     if (!fs.existsSync(launchAgentsDir)) {
@@ -109,17 +110,50 @@ const addToStartup = () => {
 </plist>`;
 
     // 写入 plist 文件
-    fs.writeFileSync(plistPath, plistContent, 'utf8');
+    fs.writeFileSync(PLIST_PATH, plistContent, 'utf8');
 
   // 加载 launchd 服务（简单处理：卸载再加载）
-  exec(`launchctl unload ${plistPath} 2>/dev/null; launchctl load ${plistPath}`, (error) => {
+  exec(`launchctl unload ${PLIST_PATH} 2>/dev/null; launchctl load ${PLIST_PATH}`, (error) => {
     if (error) {
       console.error(`添加到启动项失败: ${error.message}`);
-      console.log('请手动运行: launchctl load ' + plistPath);
+      console.log('请手动运行: launchctl load ' + PLIST_PATH);
       return;
     }
     console.log('✓ 已成功添加到启动项！');
     console.log('✓ 服务将在系统启动时自动运行');
+  });
+};
+
+// 停止监听（停止 launchd 服务，但保留启动项文件）
+const stopListening = () => {
+  if (os.platform() !== 'darwin') {
+    console.log('停止监听功能目前仅支持 macOS（launchd）');
+    return;
+  }
+  if (!fs.existsSync(PLIST_PATH)) {
+    console.log('未找到启动项文件，无需停止：' + PLIST_PATH);
+    return;
+  }
+  exec(`launchctl unload ${PLIST_PATH}`, (error) => {
+    if (error) {
+      console.error(`停止监听失败: ${error.message}`);
+      return;
+    }
+    console.log('✓ 已停止监听');
+  });
+};
+
+// 移除自启动（停止 launchd + 删除 plist）
+const removeFromStartup = () => {
+  if (os.platform() !== 'darwin') {
+    console.log('移除启动项功能目前仅支持 macOS');
+    return;
+  }
+  exec(`launchctl unload ${PLIST_PATH} 2>/dev/null || true`, () => {
+    if (fs.existsSync(PLIST_PATH)) {
+      fs.rmSync(PLIST_PATH);
+    }
+    console.log('✓ 已移除启动项');
   });
 };
 
@@ -129,6 +163,10 @@ if (args[0] === 'start') {
   startListening();
 } else if (args[0] === 'add-to-startup') {
   addToStartup();
+} else if (args[0] === 'stop') {
+  stopListening();
+} else if (args[0] === 'remove-from-startup') {
+  removeFromStartup();
 } else {
   // 如果没有参数，默认启动监听
   startListening();

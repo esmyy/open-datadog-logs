@@ -21,7 +21,9 @@ This tool continuously monitors your clipboard and automatically opens the Datad
 npm install -g @esmyy/open-datadog-logs
 ```
 
-安装完成后，工具会自动添加到系统启动项（macOS），下次开机时会自动启动。
+**After installation (macOS), it's ready to use**: it will automatically add itself to system startup (launchd) and start listening to your clipboard.
+
+Just **copy a UUID** (the clipboard content must be exactly the UUID), and it will automatically open the corresponding Datadog Logs page.
 
 ### Using pnpm
 
@@ -29,7 +31,9 @@ npm install -g @esmyy/open-datadog-logs
 pnpm add -g @esmyy/open-datadog-logs
 ```
 
-安装完成后，工具会自动添加到系统启动项（macOS），下次开机时会自动启动。
+**After installation (macOS), it's ready to use**: it will automatically add itself to system startup (launchd) and start listening to your clipboard.
+
+Just **copy a UUID** (the clipboard content must be exactly the UUID), and it will automatically open the corresponding Datadog Logs page.
 
 ### From source
 
@@ -39,40 +43,19 @@ cd open-datadog-logs
 pnpm install
 ```
 
-安装完成后会自动添加到启动项。
+After installation, it will automatically add itself to system startup (macOS).
 
 ## Usage
 
-### Start listening
+After installation on macOS, it will start listening to your clipboard by default. All commands:
 
-```bash
-open-datadog-logs start
-```
-
-或者直接运行（默认启动监听）：
-
-```bash
-open-datadog-logs
-```
-
-This will start monitoring your clipboard. When you copy a request ID (UUID format, clipboard content should be exactly the UUID), it will automatically open the Datadog logs page in your browser.
-
-### Add to startup (macOS)
-
-安装时会自动添加到启动项。如果需要手动添加：
-
-```bash
-open-datadog-logs add-to-startup
-```
-
-### Remove from startup (macOS)
-
-如果需要从启动项中移除：
-
-```bash
-launchctl unload ~/Library/LaunchAgents/com.esmyy.open-datadog-logs.plist
-rm ~/Library/LaunchAgents/com.esmyy.open-datadog-logs.plist
-```
+| Command | Effect | Notes |
+|---|---|---|
+| `open-datadog-logs` | Start listening in foreground | Keep this terminal open |
+| `open-datadog-logs start` | Start listening in foreground | Same as above |
+| `open-datadog-logs add-to-startup` | Enable auto-start on macOS (launchd) | Creates/loads `~/Library/LaunchAgents/com.esmyy.open-datadog-logs.plist` |
+| `open-datadog-logs stop` | Stop the launchd listener | Keeps the plist file |
+| `open-datadog-logs remove-from-startup` | Disable auto-start | Unloads launchd + deletes the plist file |
 
 ## How it works
 
