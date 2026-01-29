@@ -1,7 +1,7 @@
 {
   "name": "@esmyy/open-datadog-logs",
   "private": false,
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Open Datadog Logs in the browser when a request ID is copied to the clipboard",
   "main": "index.js",
   "scripts": {

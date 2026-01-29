@@ -7,7 +7,8 @@ const fs = require('fs');
 const { exec } = require('child_process');
 const os = require('os');
 
-const requestIdPattern = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/
+// Match a generic UUID (not limited to v4). Case-insensitive to accept uppercase hex too.
+const requestIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 let previousClipboard = '';
 
 // 启动监听功能

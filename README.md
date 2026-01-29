@@ -4,7 +4,7 @@ A CLI tool that automatically opens Datadog logs in your browser when a request 
 
 ## Description
 
-This tool continuously monitors your clipboard and automatically opens the Datadog logs page in your browser whenever it detects a valid request ID (UUID v4 format) has been copied.
+This tool continuously monitors your clipboard and automatically opens the Datadog logs page in your browser whenever it detects a valid request ID (UUID format) has been copied.
 
 ## Features
 
@@ -77,19 +77,18 @@ rm ~/Library/LaunchAgents/com.esmyy.open-datadog-logs.plist
 ## How it works
 
 1. The tool monitors your clipboard every second
-2. When clipboard content changes, it checks if the content matches a UUID v4 pattern
+2. When clipboard content changes, it checks if the content matches a UUID pattern
 3. If a valid request ID is detected, it opens `https://us5.datadoghq.com/logs?query=@id:{requestId}` in your default browser
 
 ## Request ID Format
 
-The tool recognizes UUID v4 format:
+The tool recognizes UUID format:
 ```
-xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 ```
 
 Where:
 - `x` is any hexadecimal digit
-- `y` is one of `8`, `9`, `a`, or `b`
 
 ## Configuration
 
