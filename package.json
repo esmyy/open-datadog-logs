@@ -5,7 +5,11 @@
   "description": "Open Datadog Logs in the browser when a request ID is copied to the clipboard",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "node index.js add-to-startup"
+  },
+  "bin": {
+    "open-datadog-logs": "./index.js"
   },
   "keywords": [
     "datadog",

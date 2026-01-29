@@ -2,47 +2,96 @@
 
 const clipboardy = require('clipboardy');
 const open = require('open');
-const clipboardy = require('clipboardy');
-const open = require('open');
 const path = require('path');
+const fs = require('fs');
 const { exec } = require('child_process');
+const os = require('os');
 
 const requestIdPattern = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/
 let previousClipboard = '';
 
-setInterval(() => {
-  const currentClipboard = clipboardy.readSync();
-  if (currentClipboard !== previousClipboard) {
-    previousClipboard = currentClipboard;
-    if (requestIdPattern.test(currentClipboard)) {
-      open(`https://us5.datadoghq.com/logs?query=%40id%3A${previousClipboard}`);
-    }
-  }
-}, 1000);
-
-
-// 添加到启动项的功能
-const addToStartup = () => {
-  const appName = "Clipboard Listener";
-  const appPath = path.join(process.env.HOME, `${appName}.app`);
-
-  // 创建 Automator 应用程序
-  const appleScript = `
-  tell application "Automator"
-      set newDoc to make new document with properties {document type:application}
-      tell newDoc
-          make new action at end of actions with properties {class:run shell script, script:"/usr/local/bin/clipboard-listener"}
-      end tell
-      save newDoc in "${appPath}"
-  end tell
-  `;
-
-  exec(`osascript -e '${appleScript}'`, (error) => {
-      if (error) {
-          console.error(`Error creating Automator app: ${error}`);
-          return;
+// 启动监听功能
+const startListening = () => {
+  console.log('开始监听剪贴板...');
+  setInterval(() => {
+    try {
+      const currentClipboard = clipboardy.readSync();
+      if (currentClipboard !== previousClipboard) {
+        previousClipboard = currentClipboard;
+        if (requestIdPattern.test(currentClipboard)) {
+          console.log(`检测到请求 ID: ${previousClipboard}`);
+          open(`https://us5.datadoghq.com/logs?query=%40id%3A${previousClipboard}`);
+        }
       }
-      console.log(`${appName} 已成功添加到启动项！`);
+    } catch (error) {
+      // 忽略剪贴板读取错误
+    }
+  }, 1000);
+};
+
+// 添加到启动项的功能 (macOS)
+const addToStartup = () => {
+  if (os.platform() !== 'darwin') {
+    console.log('启动项功能目前仅支持 macOS');
+    return;
+  }
+
+  // 获取可执行文件的路径
+  const binPath = process.argv[0]; // node 路径
+  const scriptPath = __filename; // 当前脚本路径
+  
+  // 创建 launchd plist 文件
+  const plistName = 'com.esmyy.open-datadog-logs.plist';
+  const plistPath = path.join(os.homedir(), 'Library', 'LaunchAgents', plistName);
+  const launchAgentsDir = path.dirname(plistPath);
+
+  // 确保 LaunchAgents 目录存在
+  if (!fs.existsSync(launchAgentsDir)) {
+    fs.mkdirSync(launchAgentsDir, { recursive: true });
+  }
+
+  // 创建 plist 内容
+  const plistContent = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.esmyy.open-datadog-logs</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>${binPath}</string>
+    <string>${scriptPath}</string>
+    <string>start</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>${path.join(os.homedir(), 'Library', 'Logs', 'open-datadog-logs.log')}</string>
+  <key>StandardErrorPath</key>
+  <string>${path.join(os.homedir(), 'Library', 'Logs', 'open-datadog-logs.error.log')}</string>
+</dict>
+</plist>`;
+
+  // 写入 plist 文件
+  fs.writeFileSync(plistPath, plistContent, 'utf8');
+
+  // 加载 launchd 服务
+  exec(`launchctl load ${plistPath}`, (error) => {
+    if (error) {
+      // 如果已经加载过，先卸载再加载
+      exec(`launchctl unload ${plistPath} 2>/dev/null; launchctl load ${plistPath}`, (error2) => {
+        if (error2) {
+          console.error(`添加到启动项失败: ${error2.message}`);
+          console.log('请手动运行: launchctl load ' + plistPath);
+        } else {
+          console.log('✓ 已成功添加到启动项！');
+        }
+      });
+    } else {
+      console.log('✓ 已成功添加到启动项！');
+    }
   });
 };
 
@@ -53,7 +102,6 @@ if (args[0] === 'start') {
 } else if (args[0] === 'add-to-startup') {
   addToStartup();
 } else {
-  console.log('使用方法:');
-  console.log('  clipboard-listener start      启动监听');
-  console.log('  clipboard-listener add-to-startup  添加到启动项');
+  // 如果没有参数，默认启动监听
+  startListening();
 }
