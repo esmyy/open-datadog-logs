@@ -1,31 +1,58 @@
 #!/usr/bin/env node
 
-const clipboardy = require('clipboardy');
-const open = require('open');
+// `clipboardy` and `open` are ESM-first packages; when required from CJS, use `.default`.
+const clipboardyModule = require('clipboardy');
+const clipboardy = clipboardyModule?.default ?? clipboardyModule;
+const openModule = require('open');
+const open = openModule?.default ?? openModule;
 const path = require('path');
 const fs = require('fs');
-const { exec } = require('child_process');
+const { exec, execSync } = require('child_process');
 const os = require('os');
 
-// Match a generic UUID (not limited to v4). Case-insensitive to accept uppercase hex too.
-const requestIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+// Strict UUID: clipboard must be exactly a UUID (not limited to v4). Case-insensitive.
+const requestIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 let previousClipboard = '';
+
+const readClipboard = () => {
+  // Prefer clipboardy, but keep a macOS fallback for launchd environments.
+  try {
+    return clipboardy.readSync();
+  } catch (e) {
+    if (os.platform() === 'darwin') {
+      try {
+        return execSync('/usr/bin/pbpaste', { encoding: 'utf8' });
+      } catch (_) {
+        // fallthrough
+      }
+    }
+    return '';
+  }
+};
+
+const openUrl = (url) => {
+  try {
+    const p = open(url);
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+  } catch (_) {}
+};
 
 // 启动监听功能
 const startListening = () => {
   console.log('开始监听剪贴板...');
   setInterval(() => {
     try {
-      const currentClipboard = clipboardy.readSync();
+      // Some apps copy with trailing newline/spaces; normalize to improve match reliability.
+      const currentClipboard = (readClipboard() || '').trim();
       if (currentClipboard !== previousClipboard) {
         previousClipboard = currentClipboard;
         if (requestIdPattern.test(currentClipboard)) {
-          console.log(`检测到请求 ID: ${previousClipboard}`);
-          open(`https://us5.datadoghq.com/logs?query=%40id%3A${previousClipboard}`);
+          console.log(`检测到请求 ID: ${currentClipboard}`);
+          openUrl(`https://us5.datadoghq.com/logs?query=%40id%3A${currentClipboard}`);
         }
       }
     } catch (error) {
-      // 忽略剪贴板读取错误
+      // ignore
     }
   }, 1000);
 };
@@ -37,27 +64,9 @@ const addToStartup = () => {
     return;
   }
 
-  // 获取可执行文件的路径
-  // 优先使用全局安装的 bin 路径，如果没有则使用当前脚本路径
-  let scriptPath = __filename;
-  
-  // 尝试找到全局安装的 bin 路径
-  exec('which open-datadog-logs', (error, stdout) => {
-    if (!error && stdout) {
-      scriptPath = stdout.trim();
-    }
-    
-    // 如果 scriptPath 是符号链接，获取真实路径
-    try {
-      if (fs.existsSync(scriptPath)) {
-        const realPath = fs.realpathSync(scriptPath);
-        scriptPath = realPath;
-      }
-    } catch (e) {
-      // 忽略错误，使用原路径
-    }
-
-    const binPath = process.argv[0]; // node 路径
+  // node + script path
+  const binPath = process.execPath;
+  const scriptPath = __filename;
     
     // 创建 launchd plist 文件
     const plistName = 'com.esmyy.open-datadog-logs.plist';
@@ -75,7 +84,7 @@ const addToStartup = () => {
       fs.mkdirSync(logsDir, { recursive: true });
     }
 
-    // 创建 plist 内容
+    // 创建 plist 内容（macOS 自启动的标准方式就是 launchd plist）
     const plistContent = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -102,24 +111,15 @@ const addToStartup = () => {
     // 写入 plist 文件
     fs.writeFileSync(plistPath, plistContent, 'utf8');
 
-    // 加载 launchd 服务
-    exec(`launchctl load ${plistPath}`, (error) => {
-      if (error) {
-        // 如果已经加载过，先卸载再加载
-        exec(`launchctl unload ${plistPath} 2>/dev/null; launchctl load ${plistPath}`, (error2) => {
-          if (error2) {
-            console.error(`添加到启动项失败: ${error2.message}`);
-            console.log('请手动运行: launchctl load ' + plistPath);
-          } else {
-            console.log('✓ 已成功添加到启动项！');
-            console.log('✓ 服务将在系统启动时自动运行');
-          }
-        });
-      } else {
-        console.log('✓ 已成功添加到启动项！');
-        console.log('✓ 服务将在系统启动时自动运行');
-      }
-    });
+  // 加载 launchd 服务（简单处理：卸载再加载）
+  exec(`launchctl unload ${plistPath} 2>/dev/null; launchctl load ${plistPath}`, (error) => {
+    if (error) {
+      console.error(`添加到启动项失败: ${error.message}`);
+      console.log('请手动运行: launchctl load ' + plistPath);
+      return;
+    }
+    console.log('✓ 已成功添加到启动项！');
+    console.log('✓ 服务将在系统启动时自动运行');
   });
 };
 

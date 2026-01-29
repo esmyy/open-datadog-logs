@@ -55,7 +55,7 @@ open-datadog-logs start
 open-datadog-logs
 ```
 
-This will start monitoring your clipboard. When you copy a request ID (UUID format), it will automatically open the Datadog logs page in your browser.
+This will start monitoring your clipboard. When you copy a request ID (UUID format, clipboard content should be exactly the UUID), it will automatically open the Datadog logs page in your browser.
 
 ### Add to startup (macOS)
 
@@ -82,7 +82,7 @@ rm ~/Library/LaunchAgents/com.esmyy.open-datadog-logs.plist
 
 ## Request ID Format
 
-The tool recognizes UUID format:
+The tool recognizes UUID format (clipboard content should be exactly the UUID):
 ```
 xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 ```
