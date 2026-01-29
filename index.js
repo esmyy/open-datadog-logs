@@ -37,21 +37,45 @@ const addToStartup = () => {
   }
 
   // 获取可执行文件的路径
-  const binPath = process.argv[0]; // node 路径
-  const scriptPath = __filename; // 当前脚本路径
+  // 优先使用全局安装的 bin 路径，如果没有则使用当前脚本路径
+  let scriptPath = __filename;
   
-  // 创建 launchd plist 文件
-  const plistName = 'com.esmyy.open-datadog-logs.plist';
-  const plistPath = path.join(os.homedir(), 'Library', 'LaunchAgents', plistName);
-  const launchAgentsDir = path.dirname(plistPath);
+  // 尝试找到全局安装的 bin 路径
+  exec('which open-datadog-logs', (error, stdout) => {
+    if (!error && stdout) {
+      scriptPath = stdout.trim();
+    }
+    
+    // 如果 scriptPath 是符号链接，获取真实路径
+    try {
+      if (fs.existsSync(scriptPath)) {
+        const realPath = fs.realpathSync(scriptPath);
+        scriptPath = realPath;
+      }
+    } catch (e) {
+      // 忽略错误，使用原路径
+    }
 
-  // 确保 LaunchAgents 目录存在
-  if (!fs.existsSync(launchAgentsDir)) {
-    fs.mkdirSync(launchAgentsDir, { recursive: true });
-  }
+    const binPath = process.argv[0]; // node 路径
+    
+    // 创建 launchd plist 文件
+    const plistName = 'com.esmyy.open-datadog-logs.plist';
+    const plistPath = path.join(os.homedir(), 'Library', 'LaunchAgents', plistName);
+    const launchAgentsDir = path.dirname(plistPath);
 
-  // 创建 plist 内容
-  const plistContent = `<?xml version="1.0" encoding="UTF-8"?>
+    // 确保 LaunchAgents 目录存在
+    if (!fs.existsSync(launchAgentsDir)) {
+      fs.mkdirSync(launchAgentsDir, { recursive: true });
+    }
+
+    // 确保 Logs 目录存在
+    const logsDir = path.join(os.homedir(), 'Library', 'Logs');
+    if (!fs.existsSync(logsDir)) {
+      fs.mkdirSync(logsDir, { recursive: true });
+    }
+
+    // 创建 plist 内容
+    const plistContent = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
@@ -74,24 +98,27 @@ const addToStartup = () => {
 </dict>
 </plist>`;
 
-  // 写入 plist 文件
-  fs.writeFileSync(plistPath, plistContent, 'utf8');
+    // 写入 plist 文件
+    fs.writeFileSync(plistPath, plistContent, 'utf8');
 
-  // 加载 launchd 服务
-  exec(`launchctl load ${plistPath}`, (error) => {
-    if (error) {
-      // 如果已经加载过，先卸载再加载
-      exec(`launchctl unload ${plistPath} 2>/dev/null; launchctl load ${plistPath}`, (error2) => {
-        if (error2) {
-          console.error(`添加到启动项失败: ${error2.message}`);
-          console.log('请手动运行: launchctl load ' + plistPath);
-        } else {
-          console.log('✓ 已成功添加到启动项！');
-        }
-      });
-    } else {
-      console.log('✓ 已成功添加到启动项！');
-    }
+    // 加载 launchd 服务
+    exec(`launchctl load ${plistPath}`, (error) => {
+      if (error) {
+        // 如果已经加载过，先卸载再加载
+        exec(`launchctl unload ${plistPath} 2>/dev/null; launchctl load ${plistPath}`, (error2) => {
+          if (error2) {
+            console.error(`添加到启动项失败: ${error2.message}`);
+            console.log('请手动运行: launchctl load ' + plistPath);
+          } else {
+            console.log('✓ 已成功添加到启动项！');
+            console.log('✓ 服务将在系统启动时自动运行');
+          }
+        });
+      } else {
+        console.log('✓ 已成功添加到启动项！');
+        console.log('✓ 服务将在系统启动时自动运行');
+      }
+    });
   });
 };
 

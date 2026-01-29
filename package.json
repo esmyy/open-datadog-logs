@@ -1,12 +1,19 @@
 {
   "name": "@esmyy/open-datadog-logs",
   "private": false,
-  "version": "1.0.0",
+  "version": "1.0.9",
   "description": "Open Datadog Logs in the browser when a request ID is copied to the clipboard",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "postinstall": "node index.js add-to-startup"
+    "postinstall": "node index.js add-to-startup",
+    "version:patch": "npm version patch --no-git-tag-version",
+    "version:minor": "npm version minor --no-git-tag-version",
+    "version:major": "npm version major --no-git-tag-version",
+    "release": "npm run version:patch && npm publish",
+    "release:patch": "npm run version:patch && npm publish",
+    "release:minor": "npm run version:minor && npm publish",
+    "release:major": "npm run version:major && npm publish"
   },
   "bin": {
     "open-datadog-logs": "./index.js"
